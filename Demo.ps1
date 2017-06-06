@@ -24,6 +24,7 @@ $manifestProperties = @{
     Description = 'Our first Plaster Template'
 }
 
+
 New-PlasterManifest @manifestProperties
 
 # Look at new manifest
