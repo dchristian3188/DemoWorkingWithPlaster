@@ -174,45 +174,56 @@ Describe "General project validation: $moduleName" {
 
 </message>
 
+
+# Requires Module
+
+<requireModule name="Pester" condition='$PLASTER_PARAM_Pester -eq "Yes"'
+               minimumVersion="3.4.0"
+               message="Warning!!! You've included Pester Tests, but do not have Pester installed"/>
+# Setup Function Template
+
+if(Test-Path -Path C:\temp\functionDemo)
+{
+    Remove-Item -Path C:\temp\functionDemo -Recurse -Force
+    Remove-Item -Path C:\temp\functionOutput -Recurse -Force
+}
+
+New-Item -Path C:\temp\functionDemo -ItemType Directory > $null    
+New-Item -Path C:\temp\functionOutput -ItemType Directory > $null
+Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\testsTemplate.ps1 -Destination C:\temp\functionDemo\ -Verbose 
+Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\functionTemplate.ps1 -Destination C:\temp\functionDemo\ -Verbose
+Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\functionPlasterManifestBase.xml -Destination C:\temp\functionDemo\PlasterManifest.xml -Verbose
+
+
+
+
 ## Function Template
-<?xml version="1.0" encoding="UTF-8"?>
-<plasterManifest 
-  xmlns="http://www.microsoft.com/schemas/PowerShell/Plaster/v1" schemaVersion="1.0">
-  <metadata>
-    <name>FunctionTemplate</name>
-    <id>c0b57946d-f52f-4168-b152-4fdb334b9fca</id>
-    <version>0.0.1</version>
-    <title>DC Custom Function Template</title>
-    <description />
-    <author>David Christian</author>
-    <tags />
-  </metadata>
-  <parameters>
-    <parameter name="FunctionName" type="text" prompt="Name of your Function" />
-    <parameter name="Help" type="choice" prompt="Include Comment Based Help?" default='0'>
-      <choice label="&amp;Yes" help="Adds comment based help" value="Yes" />
-      <choice label="&amp;No" help="Does not add comment based help" value="No" />
-    </parameter>
-    <parameter name="PipelineSupport" type="choice" prompt="Include Begin Process End blocks?" default='0'>
-      <choice label="&amp;Yes" help="Adds a pester folder" value="Yes" />
-      <choice label="&amp;No" help="Does not add a pester folder" value="No" />
-    </parameter>
-    <parameter name="CmdletBinding" type="choice" prompt="Simple cmdlet binding or Advanced?" default='0'>
-      <choice label="&amp;simple" help="Adds an empty cmdlet binding block" value="Simple" />
-      <choice label="&amp;Advanced" help="Adds all options to cmdlet binding" value="Advanced" />
-    </parameter>
-    <parameter name="ComputerName" type="choice" prompt="Add a paramater for computername" default='0'>
-      <choice label="&amp;Yes" help="Adds a default parameter for computername" value="Yes" />
-      <choice label="&amp;No" help="Does not include computername parameter" value="No" />
-    </parameter>
-  </parameters>
-  <content>
-  </content>
-</plasterManifest>
+
+code C:\temp\functionDemo
+
+# Run function Demo
+
+Invoke-Plaster -TemplatePath C:\temp\functionDemo -DestinationPath C:\temp\functionOutput
+
+# Modify
+
+## Need to still copy
+
+<file source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1' />
+
+## Modfy syntax
+<modify path='${PLASTER_PARAM_FunctionName}.tests.ps1'>
+    <replace>
+        <original>xxModuleNamexx</original>
+        <substitute expand='true'>${PLASTER_PARAM_FunctionName}</substitute>
+    </replace>
+</modify>
+
+
+Code C:\temp\functionOutput
+
 
 # templateFile
 
 <templateFile source='functionTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.ps1'/>
 
-
-    <templateFile source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1'/>
