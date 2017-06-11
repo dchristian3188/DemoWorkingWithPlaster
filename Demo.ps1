@@ -1,11 +1,14 @@
-﻿# Install Latest Version
+﻿$baseDir = 'C:\github\DemoWorkingWithPlaster'
+$outPutDir = Join-Path -Path $baseDir -ChildPath Output
+
+# Install Latest Version
 Find-Module -Name Plaster -Repository PSGallery | 
     Install-Module -Verbose -Force
 
 Function Reset-Workspace
 {
-    Remove-Item -Path C:\temp -Recurse -Force 
-    New-Item -Path C:\temp -ItemType Directory -ErrorAction SilentlyContinue > $null
+    Remove-Item -Path $outPutDir -Recurse -Force -ErrorAction SilentlyContinue -Verbose
+    New-Item -Path $outPutDir -ItemType Directory -ErrorAction SilentlyContinue -Verbose > $null
 }
 Reset-Workspace
 
@@ -13,9 +16,9 @@ Reset-Workspace
 # Run Default Template
 Clear-Host
 $defaultTemplate = Get-PlasterTemplate
-Invoke-Plaster -TemplatePath $defaultTemplate.TemplatePath -DestinationPath C:\temp\PlasterBuiltIn 
+Invoke-Plaster -TemplatePath $defaultTemplate.TemplatePath -DestinationPath "$outPutDir\PlasterBuiltIn"
 
-code C:\temp\PlasterBuiltIn\
+code "$outPutDir\PlasterBuiltIn"
 
 #Look at New-PlasterManifest
 Clear-Host
@@ -23,10 +26,10 @@ Get-Help -Name New-PlasterManifest
 
 # Create a new manifest
 Clear-Host
-New-Item -Path C:\temp\FirstDemo -ItemType Directory -ErrorAction SilentlyContinue > $null
+New-Item -Path "$outPutDir\FirstDemo" -ItemType Directory -ErrorAction SilentlyContinue > $null
 
 $manifestProperties = @{
-    Path = "C:\Temp\FirstDemo\PlasterManifest.xml"
+    Path = "$outPutDir\FirstDemo\PlasterManifest.xml"
     Title = "Working with Plaster Demo"
     TemplateName = 'DemoTemplate'
     TemplateVersion = '0.0.1'
@@ -35,15 +38,14 @@ $manifestProperties = @{
     Verbose = $true
 }
 
-
 New-PlasterManifest @manifestProperties
 
 # Look at new manifest
-ise "C:\Temp\FirstDemo\PlasterManifest.xml"
+code "$outPutDir\FirstDemo\PlasterManifest.xml"
 
 # Run our New Manifest
 Clear-Host
-Invoke-Plaster -TemplatePath C:\temp\FirstDemo\ -DestinationPath C:\temp\Go -Verbose
+Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDir\FirsDemoOutput" -Verbose
 
 
 # Parameters
@@ -90,24 +92,7 @@ Start-Process 'https://github.com/PowerShell/Plaster/blob/master/docs/en-US/abou
 <file source='template.psm1' destination='${PLASTER_PARAM_ModuleName}.psm1'/>
 
 # file sources
-$functionFolders = @('Public', 'Internal', 'Classes')
-ForEach ($folder in $functionFolders)
-{
-    $folderPath = Join-Path -Path $PSScriptRoot -ChildPath $folder
-    If (Test-Path -Path $folderPath)
-    {
-        Write-Verbose -Message "Importing from $folder"
-        $functions = Get-ChildItem -Path $folderPath -Filter '*.ps1' 
-        ForEach ($function in $functions)
-        {
-            Write-Verbose -Message "  Importing $($function.BaseName)"
-            . $($function.FullName)
-        }
-    }    
-}
-$publicFunctions = (Get-ChildItem -Path "$PSScriptRoot\Public" -Filter '*.ps1').BaseName
-Export-ModuleMember -Function $publicFunctions
-
+code .\Module\template.psm1
 # Using conditionals
 
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Public"' destination='Public\' source='' />
@@ -121,30 +106,7 @@ Export-ModuleMember -Function $publicFunctions
 
 
 # basic tests file
-$moduleRoot = Resolve-Path "$PSScriptRoot\.."
-$moduleName = Split-Path $moduleRoot -Leaf
-
-Describe "General project validation: $moduleName" {
-
-    $scripts = Get-ChildItem $moduleRoot -Include *.ps1, *.psm1, *.psd1 -Recurse
-
-    # TestCases are splatted to the script so we need hashtables
-    $testCase = $scripts | Foreach-Object {@{file = $_}}         
-    It "Script <file> should be valid powershell" -TestCases $testCase {
-        param($file)
-
-        $file.fullname | Should Exist
-
-        $contents = Get-Content -Path $file.fullname -ErrorAction Stop
-        $errors = $null
-        $null = [System.Management.Automation.PSParser]::Tokenize($contents, [ref]$errors)
-        $errors.Count | Should Be 0
-    }
-
-    It "Module '$moduleName' can import cleanly" {
-        {Import-Module (Join-Path $moduleRoot "$moduleName.psm1") -force } | Should Not Throw
-    }
-}
+code .\Module\basicTest.ps1
 
 # Messages
 
@@ -180,36 +142,30 @@ Describe "General project validation: $moduleName" {
 <requireModule name="Pester" condition='$PLASTER_PARAM_Pester -eq "Yes"'
                minimumVersion="3.4.0"
                message="Warning!!! You've included Pester Tests, but do not have Pester installed"/>
+               
+
 # Setup Function Template
-
-if(Test-Path -Path C:\temp\functionDemo)
+if (Test-Path -Path "$outPutDir\functionDemo")
 {
-    Remove-Item -Path C:\temp\functionDemo -Recurse -Force
-    Remove-Item -Path C:\temp\functionOutput -Recurse -Force
+    Remove-Item -Path "$outPutDir\functionDemo" -Recurse -Force -Verbose
 }
-
-New-Item -Path C:\temp\functionDemo -ItemType Directory > $null    
-New-Item -Path C:\temp\functionOutput -ItemType Directory > $null
-Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\testsTemplate.ps1 -Destination C:\temp\functionDemo\ -Verbose 
-Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\functionTemplate.ps1 -Destination C:\temp\functionDemo\ -Verbose
-Copy-Item -Path C:\github\DemoWorkingWithPlaster\Function\functionPlasterManifestBase.xml -Destination C:\temp\functionDemo\PlasterManifest.xml -Verbose
-
-
-
+New-Item -Path "$outPutDir\functionDemo" -ItemType Directory > $null
 
 ## Function Template
-
-code C:\temp\functionDemo
+Copy-Item -Path "$baseDir\function\functionPlasterManifestBase.xml" -Destination "$baseDir\function\PlasterManifest.xml" -Force -Verbose
+code "$baseDir\function\PlasterManifest.xml"
 
 # Run function Demo
 
-Invoke-Plaster -TemplatePath C:\temp\functionDemo -DestinationPath C:\temp\functionOutput
+Invoke-Plaster -TemplatePath "$baseDir\function" -DestinationPath "$outPutDir\functionDemo"
 
 # Modify
 
 ## Need to still copy
 
 <file source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1' />
+code "$baseDir\Function\testsTemplate.ps1"
+
 
 ## Modfy syntax
 <modify path='${PLASTER_PARAM_FunctionName}.tests.ps1'>
@@ -219,11 +175,36 @@ Invoke-Plaster -TemplatePath C:\temp\functionDemo -DestinationPath C:\temp\funct
     </replace>
 </modify>
 
-
-Code C:\temp\functionOutput
-
-
 # templateFile
 
+code "$baseDir\Function\functionTemplate.ps1"
 <templateFile source='functionTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.ps1'/>
+
+Invoke-Plaster -TemplatePath "$baseDir\Function\" -DestinationPath "$outPutDir\functionDemo"
+
+
+## Non Interactive
+$verbs = @('New','Get','Set','Remove')
+
+ForEach($verb in $verbs)
+{
+    $functionDetails = @{
+        FunctionName = "$($verb)-DCWebServer"
+        Help = 'Yes'
+        PipeLineSupport = 'Yes'
+        CmdletBinding = 'Advanced'
+        ComputerName = 'Yes'
+        TemplatePath =  "$baseDir\Function\"
+        DestinationPath = "$outPutDir\functionDemo"
+        Verbose = $true
+    }
+    Invoke-Plaster @functionDetails
+}
+
+# Files are created
+
+Get-ChildItem -Path "$outPutDir\functionDemo\*DCWebServer*"
+
+## Run all Tests
+Invoke-Pester -Path "$outPutDir\functionDemo" -Verbose
 

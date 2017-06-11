@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <plasterManifest 
   xmlns="http://www.microsoft.com/schemas/PowerShell/Plaster/v1" schemaVersion="1.0">
   <metadata>
@@ -30,7 +30,13 @@
     </parameter>
   </parameters>
   <content>
+    <file source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1' />
+    <modify path='${PLASTER_PARAM_FunctionName}.tests.ps1'>
+      <replace>
+        <original>xxModuleNamexx</original>
+        <substitute expand='true'>${PLASTER_PARAM_FunctionName}</substitute>
+      </replace>
+    </modify>
     <templateFile source='functionTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.ps1'/>
-    <templateFile source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1'/>
   </content>
 </plasterManifest>
