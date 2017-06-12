@@ -15,7 +15,9 @@ Reset-Workspace
 
 # Run Default Template
 Clear-Host
-$defaultTemplate = Get-PlasterTemplate
+Get-PlasterTemplate | 
+    Where-Object -FilterScript {$PSItem.TItle -eq 'New PowerShell Manifest Module'} -OutVariable defaultTemplate
+
 Invoke-Plaster -TemplatePath $defaultTemplate.TemplatePath -DestinationPath "$outPutDir\PlasterBuiltIn"
 
 code "$outPutDir\PlasterBuiltIn"
@@ -45,7 +47,7 @@ code "$outPutDir\FirstDemo\PlasterManifest.xml"
 
 # Run our New Manifest
 Clear-Host
-Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDir\FirsDemoOutput" -Verbose
+Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDir\FirstDemoOutput" 
 
 
 # Parameters
@@ -65,8 +67,8 @@ Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDi
 ## choice - Validateset
 
 <parameter name="Pester" type="choice" prompt="Include Pester Tests?" default='0'>
-    <choice label="&amp;Yes" help="Adds a pester folder" value="Yes" />
-    <choice label="&amp;No" help="Does not add a pester folder" value="No" />
+    <choice label="&amp;Yes" help="Adds a pester folder" value="$true" />
+    <choice label="&amp;No" help="Does not add a pester folder" value="$false" />
 </parameter>
 
 ## Multie Choice
@@ -77,6 +79,8 @@ Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDi
     <choice label="&amp;Binaries" help="Adds a binaries folder to module root" value="Binaries" />
     <choice label="&amp;Data" help="Adds a data folder to module root" value="Data" />
 </parameter>
+
+# Content
 
 # Plaster built in variables
 Start-Process 'https://github.com/PowerShell/Plaster/blob/master/docs/en-US/about_Plaster_CreatingAManifest.help.md#powershell-constrained-runspace'
@@ -92,7 +96,9 @@ Start-Process 'https://github.com/PowerShell/Plaster/blob/master/docs/en-US/abou
 <file source='template.psm1' destination='${PLASTER_PARAM_ModuleName}.psm1'/>
 
 # file sources
-code .\Module\template.psm1
+code $baseDir\Module\template.psm1
+Copy-Item -Path $baseDir\module\template.psm1 -Destination $outPutDir\FirstDemo -Verbose
+
 # Using conditionals
 
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Public"' destination='Public\' source='' />
@@ -101,18 +107,19 @@ code .\Module\template.psm1
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Binaries"' destination='Binaries\' source='' />
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Data"' destination='Data' source='' />
 
-<file condition='$PLASTER_PARAM_Pester -eq "Yes"' destination='Tests\' source='' />
-<file condition='$PLASTER_PARAM_Pester -eq "Yes"' destination='Tests\${PLASTER_PARAM_ModuleName}.tests.ps1' source='basicTest.ps1' />
+<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\' source='' />
+<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\${PLASTER_PARAM_ModuleName}.tests.ps1' source='basicTest.ps1' />
 
 
 # basic tests file
-code .\Module\basicTest.ps1
+code $baseDir\Module\basicTest.ps1
 
+Copy-Item -Path $baseDir\Module\basicTest.ps1 -Destination $outPutDir\firstDemo\basictest.ps1
 # Messages
 
 <message> Creating you folders for module: $PLASTER_PARAM_ModuleName </message>
 
-<message condition='$PLASTER_PARAM_Pester -eq "Yes"'>Creating a Tests folder </message>
+<message condition='$PLASTER_PARAM_Pester -eq $true'>Creating a Tests folder </message>
 
 
 
@@ -139,9 +146,11 @@ code .\Module\basicTest.ps1
 
 # Requires Module
 
-<requireModule name="Pester" condition='$PLASTER_PARAM_Pester -eq "Yes"'
+<requireModule name="Pester"
                minimumVersion="3.4.0"
-               message="Warning!!! You've included Pester Tests, but do not have Pester installed"/>
+               message="Warning!!! You've included Pester Tests, but do not have Pester installed"
+               condition='$PLASTER_PARAM_Pester -eq $true'
+               />
                
 
 # Setup Function Template
@@ -157,15 +166,15 @@ code "$baseDir\function\PlasterManifest.xml"
 
 # Run function Demo
 
-Invoke-Plaster -TemplatePath "$baseDir\function" -DestinationPath "$outPutDir\functionDemo"
+Invoke-Plaster -TemplatePath "$baseDir\function" -DestinationPath "$outPutDir\functionDemoOutput"
 
 # Modify
 
 ## Need to still copy
 
 <file source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1' />
-code "$baseDir\Function\testsTemplate.ps1"
 
+code "$baseDir\Function\testsTemplate.ps1"
 
 ## Modfy syntax
 <modify path='${PLASTER_PARAM_FunctionName}.tests.ps1'>
@@ -178,9 +187,10 @@ code "$baseDir\Function\testsTemplate.ps1"
 # templateFile
 
 code "$baseDir\Function\functionTemplate.ps1"
+
 <templateFile source='functionTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.ps1'/>
 
-Invoke-Plaster -TemplatePath "$baseDir\Function\" -DestinationPath "$outPutDir\functionDemo"
+Invoke-Plaster -TemplatePath "$baseDir\Function\" -DestinationPath "$outPutDir\functionDemoOutPut"
 
 
 ## Non Interactive
@@ -195,7 +205,7 @@ ForEach($verb in $verbs)
         CmdletBinding = 'Advanced'
         ComputerName = 'Yes'
         TemplatePath =  "$baseDir\Function\"
-        DestinationPath = "$outPutDir\functionDemo"
+        DestinationPath = "$outPutDir\functionDemoOutput"
         Verbose = $true
     }
     Invoke-Plaster @functionDetails
@@ -203,8 +213,15 @@ ForEach($verb in $verbs)
 
 # Files are created
 
-Get-ChildItem -Path "$outPutDir\functionDemo\*DCWebServer*"
+Get-ChildItem -Path "$outPutDir\functionDemoOutput\*DCWebServer*"
 
 ## Run all Tests
-Invoke-Pester -Path "$outPutDir\functionDemo" -Verbose
+Invoke-Pester -Path "$outPutDir\functionDemoOutput" -Verbose
 
+
+## Taged Modules
+Code C:\github\PlasterTemplates
+
+Copy-Item -Path C:\github\PlasterTemplates -Destination 'C:\Program Files\WindowsPowerShell\Modules\PlasterTemplates' -Verbose -Force -Recurse
+
+Get-PlasterTemplate -IncludeInstalledModules
