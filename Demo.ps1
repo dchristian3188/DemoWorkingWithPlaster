@@ -13,10 +13,14 @@ Function Reset-Workspace
 Reset-Workspace
 
 
+# Plaster Built in Commands
+
+Get-Command -Module Plaster 
+
 # Run Default Template
 Clear-Host
-Get-PlasterTemplate | 
-    Where-Object -FilterScript {$PSItem.TItle -eq 'New PowerShell Manifest Module'} -OutVariable defaultTemplate
+$defaultTemplate  = Get-PlasterTemplate | 
+    Where-Object -FilterScript {$PSItem.TItle -eq 'New PowerShell Manifest Module'}
 
 Invoke-Plaster -TemplatePath $defaultTemplate.TemplatePath -DestinationPath "$outPutDir\PlasterBuiltIn"
 
@@ -92,14 +96,23 @@ Start-Process 'https://github.com/PowerShell/Plaster/blob/master/docs/en-US/abou
         author='$PLASTER_PARAM_ModuleAuthor' 
         description='$PLASTER_PARAM_ModuleDesc'/>
 
-# File Content
-<file source='template.psm1' destination='${PLASTER_PARAM_ModuleName}.psm1'/>
 
 # file sources
 code $baseDir\Module\template.psm1
 Copy-Item -Path $baseDir\module\template.psm1 -Destination $outPutDir\FirstDemo -Verbose
 
+# File Content
+<file source='template.psm1' destination='${PLASTER_PARAM_ModuleName}.psm1'/>
+
 # Using conditionals
+
+<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\' source='' />
+<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\${PLASTER_PARAM_ModuleName}.tests.ps1' source='basicTest.ps1' />
+
+# basic tests file - Remember to copy
+code $baseDir\module\basicTest.ps1
+Copy-Item -Path $baseDir\module\basicTest.ps1 -Destination $outPutDir\FirstDemo -Verbose
+
 
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Public"' destination='Public\' source='' />
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Internal"' destination='Internal\' source='' />
@@ -107,14 +120,7 @@ Copy-Item -Path $baseDir\module\template.psm1 -Destination $outPutDir\FirstDemo 
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Binaries"' destination='Binaries\' source='' />
 <file condition='$PLASTER_PARAM_FunctionFolders -contains "Data"' destination='Data' source='' />
 
-<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\' source='' />
-<file condition='$PLASTER_PARAM_Pester -eq $true' destination='Tests\${PLASTER_PARAM_ModuleName}.tests.ps1' source='basicTest.ps1' />
 
-
-# basic tests file
-code $baseDir\Module\basicTest.ps1
-
-Copy-Item -Path $baseDir\Module\basicTest.ps1 -Destination $outPutDir\firstDemo\basictest.ps1
 # Messages
 
 <message> Creating you folders for module: $PLASTER_PARAM_ModuleName </message>
@@ -143,6 +149,10 @@ Copy-Item -Path $baseDir\Module\basicTest.ps1 -Destination $outPutDir\firstDemo\
 
 </message>
 
+# Cleanup Output
+Remove-Item -Path $outPutDir\FirstDemoOutput\* -Recurse -Force -Verbose
+Clear-Host
+
 
 # Requires Module
 
@@ -151,14 +161,20 @@ Copy-Item -Path $baseDir\Module\basicTest.ps1 -Destination $outPutDir\firstDemo\
                message="Warning!!! You've included Pester Tests, but do not have Pester installed"
                condition='$PLASTER_PARAM_Pester -eq $true'
                />
-               
+
+
+# Run it!
+Invoke-Plaster -TemplatePath "$outPutDir\FirstDemo\" -DestinationPath "$outPutDir\FirstDemoOutput"
+
+Code $outPutDir\FirstDemoOutput
+
 
 # Setup Function Template
-if (Test-Path -Path "$outPutDir\functionDemo")
+if (Test-Path -Path "$outPutDir\functionDemoOutput")
 {
-    Remove-Item -Path "$outPutDir\functionDemo" -Recurse -Force -Verbose
+    Remove-Item -Path "$outPutDir\functionDemoOutput" -Recurse -Force -Verbose
 }
-New-Item -Path "$outPutDir\functionDemo" -ItemType Directory > $null
+New-Item -Path "$outPutDir\functionDemoOutput" -ItemType Directory > $null
 
 ## Function Template
 Copy-Item -Path "$baseDir\function\functionPlasterManifestBase.xml" -Destination "$baseDir\function\PlasterManifest.xml" -Force -Verbose
@@ -171,10 +187,9 @@ Invoke-Plaster -TemplatePath "$baseDir\function" -DestinationPath "$outPutDir\fu
 # Modify
 
 ## Need to still copy
+code "$baseDir\Function\testsTemplate.ps1"
 
 <file source='testsTemplate.ps1' destination='${PLASTER_PARAM_FunctionName}.tests.ps1' />
-
-code "$baseDir\Function\testsTemplate.ps1"
 
 ## Modfy syntax
 <modify path='${PLASTER_PARAM_FunctionName}.tests.ps1'>
@@ -206,7 +221,7 @@ ForEach($verb in $verbs)
         ComputerName = 'Yes'
         TemplatePath =  "$baseDir\Function\"
         DestinationPath = "$outPutDir\functionDemoOutput"
-        Verbose = $true
+        NoLogo = $true
     }
     Invoke-Plaster @functionDetails
 }
@@ -223,5 +238,6 @@ Invoke-Pester -Path "$outPutDir\functionDemoOutput" -Verbose
 Code C:\github\PlasterTemplates
 
 Copy-Item -Path C:\github\PlasterTemplates -Destination 'C:\Program Files\WindowsPowerShell\Modules\PlasterTemplates' -Verbose -Force -Recurse
+
 
 Get-PlasterTemplate -IncludeInstalledModules
